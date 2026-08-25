@@ -26,6 +26,10 @@ object CasioConstants {
     val CASIO_DATA_REQUEST_CHARACTERISTIC_UUID: UUID =
         UUID.fromString("26eb0023-b012-49a8-b1f8-394fb2032b0f")
 
+    /** Carries raw fragments for transfers negotiated on the data-request characteristic. */
+    val CASIO_CONVOY_CHARACTERISTIC_UUID: UUID =
+        UUID.fromString("26eb0024-b012-49a8-b1f8-394fb2032b0f")
+
     val CASIO_SET_CONFIGURATION_CHARACTERISTIC_UUID: UUID =
         UUID.fromString("26eb002e-b012-49a8-b1f8-394fb2032b0f")
 

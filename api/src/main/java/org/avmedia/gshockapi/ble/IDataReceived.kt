@@ -6,6 +6,13 @@
 
 package org.avmedia.gshockapi.ble
 
+import java.util.UUID
+
 fun interface IDataReceived {
     fun dataReceived(data: String?)
+}
+
+/** Optional source-aware extension; the original callback remains unchanged. */
+interface ICharacteristicDataReceived : IDataReceived {
+    fun dataReceived(source: UUID, data: ByteArray)
 }

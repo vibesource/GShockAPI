@@ -106,11 +106,17 @@ private class GShockManagerImpl(
                     subscribedCharacteristics.add(char.uuid)
 
                     setNotificationCallback(char).with { _, data ->
-                        val hexData = data.value?.joinToString(separator = " ", prefix = "0x") {
+                        val payload = data.value ?: return@with
+                        val hexData = payload.joinToString(separator = " ", prefix = "0x") {
                             String.format("%02X", it)
                         }
                         Timber.d("Notification from ${char.uuid}: $hexData")
-                        dataReceivedCallback?.dataReceived(hexData)
+                        val callback = dataReceivedCallback
+                        if (callback is ICharacteristicDataReceived) {
+                            callback.dataReceived(char.uuid, payload.copyOf())
+                        } else {
+                            callback?.dataReceived(hexData)
+                        }
                     }
                     enableNotifications(char)
                         .fail { _, status ->

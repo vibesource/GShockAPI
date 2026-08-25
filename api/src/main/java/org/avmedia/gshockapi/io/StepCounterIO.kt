@@ -2,14 +2,9 @@ package org.avmedia.gshockapi.io
 
 import android.os.Build
 import androidx.annotation.RequiresApi
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.withTimeoutOrNull
 import org.avmedia.gshockapi.model.StepCounterData
 import org.avmedia.gshockapi.WatchInfo
-import org.avmedia.gshockapi.ble.GetSetMode
-import org.avmedia.gshockapi.utils.Utils
 import timber.log.Timber
-import kotlin.time.Duration.Companion.milliseconds
 
 // ============================================================================
 // Pure Functional Core: Step Counter Decoding
@@ -114,52 +109,10 @@ object StepCounterIOFunctional {
 // Imperative Shell: Side Effects & State Management
 // ============================================================================
 
-/*
-Confirmed from a real HCI capture and cross-checked against a working
-Python reference implementation:
-
-  TX  0x0011 (DRSP):   00 11 00 00 00        -- start: command=0, category=0x11
-  RX  0x0011 (DRSP):   00 11 90 01 00 00 00  -- ack: total length = 400 bytes
-  RX  0x0014 (Convoy): 26 07 01 18 40 01 ...  -- data fragments, ~20B each
-
-Two things a prior version of this file got wrong, both confirmed by the
-Python reference:
-  1. The watch's answer is NOT one notification -- it's ~20 separate
-     fragments that must be concatenated to the full 400-byte length
-     before parsing. There is no evidence anywhere else in this codebase
-     of a dispatcher layer that reassembles multiple GATT notification
-     EVENTS automatically (as opposed to ACL-level fragments within one
-     notification, which Android does reassemble) -- assuming otherwise
-     was untested and is very likely wrong.
-  2. The transfer needs an explicit end-transaction acknowledgment sent
-     back to the watch (command=0x04) once the full length has arrived --
-     matching WFS_DRSP_COMMANDS_END_TRANSACTION=4 seen in the official
-     app's own source. Neither prior Kotlin version sent this.
-
-STILL NEEDS YOUR INPUT:
-  - The DRSP length-announcement/end-transaction messages (the
-    "00 11 90 01 00 00 00"-style acks on handle 0x0011) need to be routed
-    to onDrspReceived() below. I don't know the CasioConstants key
-    WatchProtocol.dataReceivedHandlers should use for that -- presumably
-    CASIO_DATA_REQUEST_SP's own code, parallel to how 0x26 already routes
-    the Convoy data fragments to onReceived(). Please wire that in (or
-    tell me the constant).
-  - Until that's wired up, expectedLength falls back to a hardcoded 400,
-    which matches this capture but isn't a real fix for anything else.
-  - The 22 unmodeled trailing bytes (see StepCounterIOFunctional's doc
-    comment) are still unexplained.
-*/
 @RequiresApi(Build.VERSION_CODES.O)
 object StepCounterIO {
 
-    private const val FALLBACK_EXPECTED_LENGTH = 400
     private const val DRSP_CATEGORY_EXERCISE = 0x11
-    private val START_TRANSACTION_CMD = byteArrayOf(0x00, DRSP_CATEGORY_EXERCISE.toByte(), 0x00, 0x00, 0x00)
-    private val END_TRANSACTION_CMD = byteArrayOf(0x04, DRSP_CATEGORY_EXERCISE.toByte(), 0x00, 0x00, 0x00)
-
-    private var accumulator = ByteArray(0)
-    private var expectedLength: Int = FALLBACK_EXPECTED_LENGTH
-    private var result: CompletableDeferred<StepCounterData>? = null
 
     suspend fun request(): StepCounterData {
         if (!WatchInfo.hasStepCounter) {
@@ -170,102 +123,19 @@ object StepCounterIO {
     }
 
     private suspend fun getStepCount(): StepCounterData {
-        val deferred = CompletableDeferred<StepCounterData>()
-        synchronized(this) {
-            accumulator = ByteArray(0)
-            expectedLength = FALLBACK_EXPECTED_LENGTH
-            result = deferred
-        }
-        try {
-            IO.writeCmd(GetSetMode.DATA_REQUEST, START_TRANSACTION_CMD)
-            val stepData = withTimeoutOrNull(10_000L.milliseconds) { deferred.await() }
-            if (stepData == null) {
-                Timber.w("StepCounterIO: timed out waiting for activity record (accumulated ${accumulator.size}/${expectedLength}B)")
-            }
-            return stepData ?: StepCounterData.unavailable()
-        } finally {
-            synchronized(this) {
-                result = null
-                accumulator = ByteArray(0)
-            }
+        return runCatching {
+            val payload = ConvoyTransferIO.request(DRSP_CATEGORY_EXERCISE)
+            StepCounterIOFunctional.parse(payload)
+                ?: error("failed to parse ${payload.size}B activity record")
+        }.onSuccess { stepData ->
+            Timber.i("Step count parsed: $stepData")
+        }.onFailure { error ->
+            Timber.w(error, "StepCounterIO transfer failed")
+        }.getOrElse {
+            StepCounterData.unavailable()
         }
     }
 
-    /**
-     * Call this from whatever handler receives DRSP-envelope messages on
-     * the "Data Request SP" characteristic (handle 0x0011 in the capture)
-     * -- both the length-announcement ack (command=0x00) and any
-     * end-transaction confirmation from the watch (command=0x04). See
-     * file-level TODO -- the real WatchProtocol routing key for this is
-     * not yet confirmed.
-     *
-     * @param data Raw bytes of the DRSP message, e.g. [00,11,90,01,00,00,00]
-     */
-    fun onDrspReceived(data: ByteArray) {
-        if (data.size < 5) return
-        val command = data[0].toInt() and 0xFF
-        val category = data[1].toInt() and 0xFF
-        if (category != DRSP_CATEGORY_EXERCISE) return
-
-        if (command == 0x00) {
-            val length = (data[2].toInt() and 0xFF) or
-                    ((data[3].toInt() and 0xFF) shl 8) or
-                    ((data[4].toInt() and 0xFF) shl 16)
-            synchronized(this) {
-                if (result != null) {
-                    expectedLength = length
-                    Timber.d("StepCounterIO: expected length announced = ${length}B")
-                }
-            }
-        }
-        // command == 0x04 (end transaction, watch-initiated) needs no action here --
-        // finalization already happens in onReceived() once the buffer is full.
-    }
-
-    /**
-     * Called when a Convoy (activity-record) notification fragment is
-     * received. Appends it to the accumulator; only attempts to parse
-     * once the full advertised length has arrived, and sends the
-     * end-transaction acknowledgment back to the watch at that point
-     * (confirmed necessary -- see file-level note).
-     *
-     * @param data The notification payload as a string of space-separated hex values
-     */
-    fun onReceived(data: String) {
-        val deferred = synchronized(this) { result } ?: return
-
-        try {
-            val intArr = Utils.toIntArray(data)
-            val bytes = Utils.byteArrayOfIntArray(intArr.toIntArray())
-
-            val accumulated = synchronized(this) {
-                accumulator += bytes
-                accumulator.size
-            }
-
-            Timber.d("StepCounterIO.onReceived: accumulated=${accumulated}B / expected=${expectedLength}B")
-
-            if (accumulated < expectedLength) {
-                return // wait for more fragments
-            }
-
-            // Full payload assembled -- acknowledge end of transaction before parsing,
-            // matching the confirmed-necessary DRSP end-transaction step.
-            IO.writeCmd(GetSetMode.DATA_REQUEST, END_TRANSACTION_CMD)
-
-            val fullPayload = synchronized(this) { accumulator }
-            val stepData = StepCounterIOFunctional.parse(fullPayload)
-
-            if (stepData != null) {
-                Timber.i("Step count parsed: $stepData")
-                synchronized(this) { deferred.complete(stepData) }
-            } else {
-                Timber.w("Failed to parse activity record from ${fullPayload.size}B reassembled payload: ${fullPayload.joinToString("") { "%02X".format(it) }}")
-                synchronized(this) { deferred.complete(StepCounterData.unavailable()) }
-            }
-        } catch (e: Exception) {
-            Timber.e("Exception parsing step counter data: ${e.message}")
-            synchronized(this) { deferred.complete(StepCounterData.unavailable()) }
-        }
-    }
+    /** Legacy entry point retained for binary/source compatibility. */
+    fun onReceived(data: String) = Unit
 }
