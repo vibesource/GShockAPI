@@ -3,6 +3,7 @@ package org.avmedia.gshockapi
 import android.os.Build
 import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.protocols.AnalogueProtocol
+import org.avmedia.gshockapi.protocols.GgB100Protocol
 import org.avmedia.gshockapi.protocols.MipProtocol
 import org.avmedia.gshockapi.protocols.StandardProtocol
 import org.avmedia.gshockapi.protocols.WatchProtocol
@@ -75,6 +76,9 @@ data object WatchInfo {
     val hasTimeFormat:          Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasTimeFormat
     val hasHourlyChime:         Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasHourlyChime
     val hasLongTimerKey:        Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasLongTimerKey
+    val hasLocationIndicator:   Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasLocationIndicator
+    val hasMissionLog:          Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasMissionLog
+    val hasAltimeterCorrection: Boolean @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.hasAltimeterCorrection
     val settingsSize:           Int     @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.settingsSize
 
     val protocol: WatchProtocol @RequiresApi(Build.VERSION_CODES.O) get() = getState().info.protocol
@@ -86,7 +90,7 @@ data object WatchInfo {
     enum class WatchModel {
         GA, GW, DW_B5600, DW, GMW, GPR, GST, MSG, GB001, GBD, GBD_800,
         MRG_B5000, GCW_B5000, EQB, ECB, ABL_100, DW_H5600, GMW_BZ5000,
-        GW_BX5600, MTG_B1000, MTG_B3000, GENERIC,
+        GW_BX5600, MTG_B1000, MTG_B3000, GG_B100, GENERIC,
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -125,6 +129,9 @@ data object WatchInfo {
         val hasTimeFormat: Boolean = true,
         val hasHourlyChime: Boolean = true,
         val hasLongTimerKey: Boolean = false,
+        val hasLocationIndicator: Boolean = false,
+        val hasMissionLog: Boolean = false,
+        val hasAltimeterCorrection: Boolean = false,
         val settingsSize: Int = 17,
         val protocol: WatchProtocol = StandardProtocol
     )
@@ -226,6 +233,16 @@ data object WatchInfo {
             hasStepCounter = true,
             hasDateFormat = false,
             weekLanguageSupported = false,
+        ),
+        ModelInfo(
+            model = WatchModel.GG_B100,
+            // Module 5594 has a distinct 160-byte exercise record. Keep the
+            // existing ABL-100 step decoder disabled until that layout is decoded.
+            hasStepCounter = false,
+            hasLocationIndicator = true,
+            hasMissionLog = true,
+            hasAltimeterCorrection = true,
+            protocol = GgB100Protocol,
         ),
         ModelInfo(model = WatchModel.GA,     hasAutoLight = false, hasReminders = true),
         ModelInfo(model = WatchModel.GB001,  hasAutoLight = true,  hasReminders = false),
@@ -360,7 +377,10 @@ data object WatchInfo {
         put("GST-B300", WatchModel.GST)
         // Module 5588: GWR-B1000
         put("GWR-B1000", WatchModel.GW)
-        // Module 5594: GMC-B100
+        // Module 5594: GG-B100
+        put("GG-B100", WatchModel.GG_B100)
+        // Retain this historical model-index entry without claiming it is
+        // Module 5594; no corresponding watch has been verified.
         put("GMC-B100", WatchModel.GENERIC)
         // Module 5597: OCW-B1300
         put("OCW-B1300", WatchModel.GENERIC)
@@ -479,7 +499,6 @@ data object WatchInfo {
         put("BSA-B100", WatchModel.GENERIC)
         put("GMA-B800", WatchModel.GENERIC)
         put("GR-B100", WatchModel.GENERIC)
-        put("GG-B100", WatchModel.GENERIC)
         put("PRT-B50", WatchModel.GENERIC)
         put("GR-B200", WatchModel.GENERIC)
         put("OCW-T200", WatchModel.GENERIC)
@@ -511,13 +530,13 @@ data object WatchInfo {
         name.removePrefix("CASIO ").trim().split(" ").firstOrNull().orEmpty()
 
     /** Pure: resolve only an exact official model name; never use partial matching. */
-    private fun resolveModel(name: String): WatchModel {
+    internal fun resolveModel(name: String): WatchModel {
         val modelName = name.removePrefix("CASIO ").trim()
         return exactModelMap[modelName] ?: WatchModel.GENERIC
     }
     /** Pure: look up ModelInfo, falling back to GENERIC. */
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun resolveModelInfo(model: WatchModel): ModelInfo =
+    internal fun resolveModelInfo(model: WatchModel): ModelInfo =
         modelMap[model] ?: modelMap.getValue(WatchModel.GENERIC)
 
     /** Pure: build a complete new State from a device name. */
