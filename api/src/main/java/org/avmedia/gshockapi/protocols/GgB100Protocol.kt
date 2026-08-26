@@ -2,6 +2,7 @@ package org.avmedia.gshockapi.protocols
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import org.avmedia.gshockapi.model.MissionLogAltitudeData
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.DateTimeException
@@ -123,6 +124,48 @@ object GgB100ProtocolPackets {
         return MissionLogState(command, timestamp)
     }
 
+    /** Decodes the live-verified 294-byte Module 5594 altitude block. */
+    fun decodeMissionLogAltitude(data: ByteArray): MissionLogAltitudeData? {
+        if (data.size != 294) return null
+
+        val startTime = decodeBcdTimestamp(data.copyOfRange(0, 6))
+        val samples = mutableListOf<MissionLogAltitudeData.Sample>()
+        var endMarkerIndex: Int? = null
+        repeat(60) { index ->
+            val offset = 6 + index * 2
+            val raw = littleEndianUnsignedShort(data, offset)
+            when (raw) {
+                0x7FFE -> if (endMarkerIndex == null) endMarkerIndex = index
+                0x7FFF -> Unit
+                else -> samples += MissionLogAltitudeData.Sample(
+                    index = index,
+                    altitudeMetres = raw.toShort().toInt(),
+                    timestampUtc = startTime?.plusMinutes(index * 2L),
+                )
+            }
+        }
+
+        val pointsOffset = 6 + 60 * 2
+        val points = buildList {
+            repeat(14) { slot ->
+                val offset = pointsOffset + slot * 12
+                val timestamp = decodeBcdTimestamp(data.copyOfRange(offset + 2, offset + 8))
+                    ?: return@repeat
+                add(
+                    MissionLogAltitudeData.Point(
+                        slot = slot,
+                        altitudeMetres = littleEndianUnsignedShort(data, offset).toShort().toInt(),
+                        timestampUtc = timestamp,
+                        metadataHex = data.copyOfRange(offset + 8, offset + 12)
+                            .joinToString(" ") { "%02x".format(it.toInt() and 0xFF) },
+                    ),
+                )
+            }
+        }
+
+        return MissionLogAltitudeData(startTime, samples, points, endMarkerIndex)
+    }
+
     fun drspStart(category: Int): ByteArray = drspCommand(0x00, category)
 
     fun drspEnd(category: Int): ByteArray = drspCommand(0x04, category)
@@ -143,6 +186,9 @@ object GgB100ProtocolPackets {
 
     private fun littleEndian(value: Long, size: Int): ByteArray =
         ByteArray(size) { index -> ((value ushr (index * 8)) and 0xFF).toByte() }
+
+    private fun littleEndianUnsignedShort(data: ByteArray, offset: Int): Int =
+        (data[offset].toInt() and 0xFF) or ((data[offset + 1].toInt() and 0xFF) shl 8)
 
     private fun decodeBcdTimestamp(bytes: ByteArray): LocalDateTime? {
         if (bytes.size != 6 || bytes.all { it == 0x00.toByte() } || bytes.all { it == 0xFF.toByte() }) {

@@ -7,4 +7,8 @@ data class MissionLogData(
     val state: GgB100ProtocolPackets.MissionLogState,
     val altitudeData: ByteArray,
     val exerciseData: ByteArray,
-)
+) {
+    /** Null only when the watch returns an as-yet unknown altitude block layout. */
+    val altitude: MissionLogAltitudeData?
+        get() = GgB100ProtocolPackets.decodeMissionLogAltitude(altitudeData)
+}

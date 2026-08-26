@@ -57,6 +57,31 @@ class GgB100ProtocolTest {
     }
 
     @Test
+    fun `altitude block decodes samples end marker and timestamped points`() {
+        val block = ByteArray(294) { 0xFF.toByte() }
+        hex("26 08 25 15 44 04").copyInto(block, 0)
+        repeat(60) { index -> hex("ff 7f").copyInto(block, 6 + index * 2) }
+        hex("54 00 55 00 fe 7f").copyInto(block, 6)
+        hex("51 00 26 08 25 15 00 55 5b 04 00 ff").copyInto(block, 126)
+
+        val decoded = GgB100ProtocolPackets.decodeMissionLogAltitude(block)
+
+        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 44, 4), decoded?.startTimeUtc)
+        assertEquals(2, decoded?.samples?.size)
+        assertEquals(84, decoded?.samples?.get(0)?.altitudeMetres)
+        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 46, 4), decoded?.samples?.get(1)?.timestampUtc)
+        assertEquals(2, decoded?.endMarkerIndex)
+        assertEquals(81, decoded?.points?.single()?.altitudeMetres)
+        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 0, 55), decoded?.points?.single()?.timestampUtc)
+        assertEquals("5b 04 00 ff", decoded?.points?.single()?.metadataHex)
+    }
+
+    @Test
+    fun `unknown altitude block length remains lossless but undecoded`() {
+        assertNull(GgB100ProtocolPackets.decodeMissionLogAltitude(ByteArray(12)))
+    }
+
+    @Test
     fun `DRSP commands and headers match Mission Log captures`() {
         assertArrayEquals(hex("00 19 00 00 00"), GgB100ProtocolPackets.drspStart(0x19))
         assertArrayEquals(hex("04 11 00 00 00"), GgB100ProtocolPackets.drspEnd(0x11))
