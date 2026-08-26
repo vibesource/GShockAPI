@@ -11,6 +11,7 @@ import org.avmedia.gshockapi.io.TimeAdjustmentInfo
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
 import org.avmedia.gshockapi.model.MissionLogData
+import org.avmedia.gshockapi.model.LocationIndicatorFailure
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
 import java.util.TimeZone
@@ -97,6 +98,8 @@ interface IGShockAPI {
     /** Returns true for the Module 5594 watch-initiated Mission Log connection. */
     fun isMissionLogConnection(): Boolean
 
+    fun isLocationIndicatorConnection(): Boolean
+
     /**
      * Retrieves the watch model name (e.g., "GW-B5600").
      *
@@ -177,6 +180,14 @@ interface IGShockAPI {
     /** Downloads a watch-initiated Module 5594 Mission Log using phone location. */
     @RequiresPermission(Manifest.permission.ACCESS_FINE_LOCATION)
     suspend fun downloadMissionLog(timeZone: String = TimeZone.getDefault().id): MissionLogData
+
+    suspend fun completeLocationIndicator(distanceMetres: Long, bearingDegrees: Int)
+
+    suspend fun failLocationIndicator(reason: LocationIndicatorFailure)
+
+    suspend fun updateLocationIndicator(distanceMetres: Long, bearingDegrees: Int)
+
+    suspend fun updateLocationIndicatorFailure(reason: LocationIndicatorFailure)
 
     /**
      * Retrieves the current timer setting in seconds.

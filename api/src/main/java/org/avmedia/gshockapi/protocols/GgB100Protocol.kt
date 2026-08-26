@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.model.MissionLogAltitudeData
 import org.avmedia.gshockapi.model.MissionLogExerciseData
+import org.avmedia.gshockapi.io.LocationIndicatorIO
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.DateTimeException
@@ -12,6 +13,9 @@ import java.time.LocalDateTime
 /** Module 5594 protocol profile for the GG-B100. */
 @RequiresApi(Build.VERSION_CODES.O)
 open class GgB100Protocol : StandardProtocol() {
+    override val dataReceivedHandlers: Map<Int, (String) -> Unit>
+        get() = super.dataReceivedHandlers + (GgB100ProtocolPackets.LOCATION_INDICATOR to LocationIndicatorIO::onReceived)
+
     companion object : GgB100Protocol()
 }
 
@@ -45,6 +49,19 @@ object GgB100ProtocolPackets {
         return byteArrayOf(LOCATION_INDICATOR.toByte(), 0x02, 0x00) +
             littleEndian(distanceMetres, 4) + littleEndian(bearingDegrees.toLong(), 2)
     }
+
+    fun locationIndicatorFailure(resultCode: Int): ByteArray {
+        require(resultCode in 1..3) { "Location Indicator failure code must be 1, 2, or 3" }
+        return byteArrayOf(LOCATION_INDICATOR.toByte(), 0x02, resultCode.toByte()) + ByteArray(6)
+    }
+
+    fun locationIndicatorWatchName(): ByteArray =
+        byteArrayOf(0x23) + "CASIO GG-B100".encodeToByteArray() + ByteArray(6)
+
+    fun isLocationIndicatorCalculationRequest(packet: ByteArray): Boolean =
+        packet.size == 9 &&
+            packet[0].toInt() and 0xFF == LOCATION_INDICATOR &&
+            packet[1].toInt() and 0xFF == 0x02
 
     fun altimeterCorrection(altitudeMetres: Int?): ByteArray {
         if (altitudeMetres == null) {

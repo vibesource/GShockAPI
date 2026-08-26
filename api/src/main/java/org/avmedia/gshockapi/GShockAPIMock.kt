@@ -13,6 +13,7 @@ import org.avmedia.gshockapi.io.TimeAdjustmentInfo
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
 import org.avmedia.gshockapi.model.MissionLogData
+import org.avmedia.gshockapi.model.LocationIndicatorFailure
 import org.avmedia.gshockapi.model.EventDate
 import org.avmedia.gshockapi.model.RepeatPeriod
 import org.avmedia.gshockapi.model.Settings
@@ -84,6 +85,8 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
 
     override fun isMissionLogConnection(): Boolean = false
 
+    override fun isLocationIndicatorConnection(): Boolean = false
+
     override fun isAlwaysConnectedConnectionPressed(): Boolean {
         return false
     }
@@ -153,6 +156,14 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
     ): MissionLogData = unavailableMissionLog()
 
     override suspend fun downloadMissionLog(timeZone: String): MissionLogData = unavailableMissionLog()
+
+    override suspend fun completeLocationIndicator(distanceMetres: Long, bearingDegrees: Int) = Unit
+
+    override suspend fun failLocationIndicator(reason: LocationIndicatorFailure) = Unit
+
+    override suspend fun updateLocationIndicator(distanceMetres: Long, bearingDegrees: Int) = Unit
+
+    override suspend fun updateLocationIndicatorFailure(reason: LocationIndicatorFailure) = Unit
 
     private fun unavailableMissionLog(): MissionLogData = MissionLogData(
         state = GgB100ProtocolPackets.MissionLogState(

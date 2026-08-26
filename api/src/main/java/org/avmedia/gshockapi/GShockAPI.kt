@@ -20,6 +20,7 @@ import org.avmedia.gshockapi.io.EventsIO
 import org.avmedia.gshockapi.io.IO
 import org.avmedia.gshockapi.io.IO.writeCmd
 import org.avmedia.gshockapi.io.MissionLogIO
+import org.avmedia.gshockapi.io.LocationIndicatorIO
 import org.avmedia.gshockapi.io.PhoneLocationProvider
 import org.avmedia.gshockapi.io.StepCounterIO
 import org.avmedia.gshockapi.io.TimeAdjustmentInfo
@@ -30,6 +31,7 @@ import org.avmedia.gshockapi.io.WorldCitiesIO
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
 import org.avmedia.gshockapi.model.MissionLogData
+import org.avmedia.gshockapi.model.LocationIndicatorFailure
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
 import timber.log.Timber
@@ -279,6 +281,9 @@ import java.time.ZoneId
     override fun isMissionLogConnection(): Boolean =
         ButtonPressedIO.get() == IO.WatchButton.MISSION_LOG
 
+    override fun isLocationIndicatorConnection(): Boolean =
+        ButtonPressedIO.get() == IO.WatchButton.LOCATION_INDICATOR
+
     /**
      * Get the name of the watch.
      *
@@ -380,6 +385,22 @@ import java.time.ZoneId
         val location = PhoneLocationProvider.currentLocation(context)
             ?: error("Unable to obtain phone location for Mission Log")
         return downloadMissionLog(location.latitude, location.longitude, timeZone)
+    }
+
+    override suspend fun completeLocationIndicator(distanceMetres: Long, bearingDegrees: Int) {
+        LocationIndicatorIO.complete(distanceMetres, bearingDegrees)
+    }
+
+    override suspend fun failLocationIndicator(reason: LocationIndicatorFailure) {
+        LocationIndicatorIO.fail(reason)
+    }
+
+    override suspend fun updateLocationIndicator(distanceMetres: Long, bearingDegrees: Int) {
+        LocationIndicatorIO.update(distanceMetres, bearingDegrees)
+    }
+
+    override suspend fun updateLocationIndicatorFailure(reason: LocationIndicatorFailure) {
+        LocationIndicatorIO.updateFailure(reason)
     }
 
     /**

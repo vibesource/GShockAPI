@@ -36,6 +36,33 @@ class GgB100ProtocolTest {
     }
 
     @Test
+    fun `location indicator handshake packets match official captures`() {
+        assertArrayEquals(
+            hex("23 43 41 53 49 4f 20 47 47 2d 42 31 30 30 00 00 00 00 00 00"),
+            GgB100ProtocolPackets.locationIndicatorWatchName(),
+        )
+        assertArrayEquals(
+            hex("35 02 03 00 00 00 00 00 00"),
+            GgB100ProtocolPackets.locationIndicatorFailure(3),
+        )
+        assertTrue(
+            GgB100ProtocolPackets.isLocationIndicatorCalculationRequest(
+                hex("35 02 00 00 00 00 00 00 00"),
+            ),
+        )
+    }
+
+    @Test
+    fun `connection reason 07 is Location Indicator`() {
+        assertEquals(
+            IO.WatchButton.LOCATION_INDICATOR,
+            ButtonPressedIOFunctional.parseButtonPress(
+                "0x10 02 43 23 13 4B D3 7F 07 03 0F FF FF FF FF 24 00 00 00",
+            ).getOrNull(),
+        )
+    }
+
+    @Test
     fun `mission state decodes captured stop timestamp`() {
         val state = GgB100ProtocolPackets.parseMissionLogState(
             hex("37 03 26 08 25 15 50 04"),
