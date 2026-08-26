@@ -86,14 +86,17 @@ class GgB100ProtocolTest {
         val block = ByteArray(160)
         repeat(48) { index -> hex("fe ff").copyInto(block, index * 2) }
         repeat(14) { index -> hex("fe ff ff ff").copyInto(block, 104 + index * 4) }
-        hex("c7 0c 00 00 a2 05 00 00").copyInto(block, 96)
+        hex("c7 00 33 01 cb 01 a3 00").copyInto(block, 0)
+        hex("5b 00 7c 00 ac 00 3d 00").copyInto(block, 48)
+        hex("46 07 00 00 d0 02 00 00").copyInto(block, 96)
 
         val decoded = GgB100ProtocolPackets.decodeMissionLogExercise(block)
 
         assertEquals(24, decoded?.stepSlots?.size)
-        assertTrue(decoded?.stepSlots?.all { it == null } == true)
-        assertEquals(3271L, decoded?.currentDay?.steps)
-        assertEquals(1442L, decoded?.currentDay?.exercise)
+        assertEquals(listOf(199, 307, 459, 163), decoded?.stepSlots?.filterNotNull())
+        assertEquals(listOf(91, 124, 172, 61), decoded?.exerciseSlots?.filterNotNull())
+        assertEquals(1862L, decoded?.currentDay?.steps)
+        assertEquals(720L, decoded?.currentDay?.exercise)
         assertNull(decoded?.dailyTotals?.get(1)?.steps)
         assertNull(decoded?.dailyTotals?.get(7)?.exercise)
     }
