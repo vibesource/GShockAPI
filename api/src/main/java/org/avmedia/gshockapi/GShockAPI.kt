@@ -21,6 +21,7 @@ import org.avmedia.gshockapi.io.IO
 import org.avmedia.gshockapi.io.IO.writeCmd
 import org.avmedia.gshockapi.io.MissionLogIO
 import org.avmedia.gshockapi.io.LocationIndicatorIO
+import org.avmedia.gshockapi.io.AltimeterCorrectionIO
 import org.avmedia.gshockapi.io.PhoneLocationProvider
 import org.avmedia.gshockapi.io.StepCounterIO
 import org.avmedia.gshockapi.io.TimeAdjustmentInfo
@@ -396,6 +397,9 @@ import java.time.ZoneId
         distanceMetres: Long,
         bearingDegrees: Int,
     ) = LocationIndicatorIO.respond(command, resultCode, distanceMetres, bearingDegrees)
+
+    override suspend fun correctAltimeter(altitudeMetres: Int?): Boolean =
+        AltimeterCorrectionIO.correct(altitudeMetres)
 
     /**
      * Get Timer value in seconds.

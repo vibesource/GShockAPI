@@ -167,6 +167,8 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
         bearingDegrees: Int,
     ) = Unit
 
+    override suspend fun correctAltimeter(altitudeMetres: Int?): Boolean = true
+
     private fun unavailableMissionLog(): MissionLogData = MissionLogData(
         state = GgB100ProtocolPackets.MissionLogState(
             GgB100ProtocolPackets.MissionLogState.Command.NO_FUNCTION,

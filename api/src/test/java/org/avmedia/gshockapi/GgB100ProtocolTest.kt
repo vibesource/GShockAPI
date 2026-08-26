@@ -192,6 +192,15 @@ class GgB100ProtocolTest {
         assertArrayEquals(hex("36 00 01 57 00"), GgB100ProtocolPackets.altimeterCorrection(87))
         assertArrayEquals(hex("36 00 01 f4 ff"), GgB100ProtocolPackets.altimeterCorrection(-12))
         assertArrayEquals(hex("36 01 01 00 00"), GgB100ProtocolPackets.altimeterCorrection(null))
+        assertEquals(
+            true,
+            GgB100ProtocolPackets.altimeterCorrectionSucceeded(hex("36 00 01 57 00")),
+        )
+        assertEquals(
+            false,
+            GgB100ProtocolPackets.altimeterCorrectionSucceeded(hex("36 01 01 00 00")),
+        )
+        assertNull(GgB100ProtocolPackets.altimeterCorrectionSucceeded(hex("36 00 00 57 00")))
     }
 
     @Test

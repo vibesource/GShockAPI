@@ -190,6 +190,9 @@ interface IGShockAPI {
         bearingDegrees: Int = 0,
     )
 
+    /** Corrects the GG-B100 altimeter, or reports unavailable altitude with null. */
+    suspend fun correctAltimeter(altitudeMetres: Int?): Boolean
+
     /**
      * Retrieves the current timer setting in seconds.
      *
