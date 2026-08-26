@@ -3,6 +3,7 @@ package org.avmedia.gshockapi.protocols
 import android.os.Build
 import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.model.MissionLogAltitudeData
+import org.avmedia.gshockapi.model.MissionLogExerciseData
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.DateTimeException
@@ -166,6 +167,33 @@ object GgB100ProtocolPackets {
         return MissionLogAltitudeData(startTime, samples, points, endMarkerIndex)
     }
 
+    /**
+     * Decodes the 160-byte Module 5594 exercise block.
+     *
+     * Casio's own QW5594 model names these four groups stepList,
+     * exerciseList, step, and exercise. Captured blocks confirm the 24 + 24
+     * 16-bit slots and eight pairs of 32-bit daily totals.
+     */
+    fun decodeMissionLogExercise(data: ByteArray): MissionLogExerciseData? {
+        if (data.size != 160) return null
+
+        val stepSlots = List(24) { index ->
+            nullableUnsignedShort(data, index * 2)
+        }
+        val exerciseSlots = List(24) { index ->
+            nullableUnsignedShort(data, 48 + index * 2)
+        }
+        val dailyTotals = List(8) { index ->
+            val offset = 96 + index * 8
+            MissionLogExerciseData.DailyTotal(
+                dayIndex = index,
+                steps = nullableUnsignedInt(data, offset),
+                exercise = nullableUnsignedInt(data, offset + 4),
+            )
+        }
+        return MissionLogExerciseData(stepSlots, exerciseSlots, dailyTotals)
+    }
+
     fun drspStart(category: Int): ByteArray = drspCommand(0x00, category)
 
     fun drspEnd(category: Int): ByteArray = drspCommand(0x04, category)
@@ -189,6 +217,17 @@ object GgB100ProtocolPackets {
 
     private fun littleEndianUnsignedShort(data: ByteArray, offset: Int): Int =
         (data[offset].toInt() and 0xFF) or ((data[offset + 1].toInt() and 0xFF) shl 8)
+
+    private fun nullableUnsignedShort(data: ByteArray, offset: Int): Int? =
+        littleEndianUnsignedShort(data, offset).takeUnless { it == 0xFFFE }
+
+    private fun nullableUnsignedInt(data: ByteArray, offset: Int): Long? {
+        val value = (data[offset].toLong() and 0xFF) or
+            ((data[offset + 1].toLong() and 0xFF) shl 8) or
+            ((data[offset + 2].toLong() and 0xFF) shl 16) or
+            ((data[offset + 3].toLong() and 0xFF) shl 24)
+        return value.takeUnless { it == 0xFFFF_FFFEL }
+    }
 
     private fun decodeBcdTimestamp(bytes: ByteArray): LocalDateTime? {
         if (bytes.size != 6 || bytes.all { it == 0x00.toByte() } || bytes.all { it == 0xFF.toByte() }) {

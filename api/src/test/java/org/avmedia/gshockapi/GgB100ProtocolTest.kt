@@ -82,6 +82,38 @@ class GgB100ProtocolTest {
     }
 
     @Test
+    fun `exercise block decodes captured QW5594 steps and exercise totals`() {
+        val block = ByteArray(160)
+        repeat(48) { index -> hex("fe ff").copyInto(block, index * 2) }
+        repeat(14) { index -> hex("fe ff ff ff").copyInto(block, 104 + index * 4) }
+        hex("c7 0c 00 00 a2 05 00 00").copyInto(block, 96)
+
+        val decoded = GgB100ProtocolPackets.decodeMissionLogExercise(block)
+
+        assertEquals(24, decoded?.stepSlots?.size)
+        assertTrue(decoded?.stepSlots?.all { it == null } == true)
+        assertEquals(3271L, decoded?.currentDay?.steps)
+        assertEquals(1442L, decoded?.currentDay?.exercise)
+        assertNull(decoded?.dailyTotals?.get(1)?.steps)
+        assertNull(decoded?.dailyTotals?.get(7)?.exercise)
+    }
+
+    @Test
+    fun `exercise slots decode unsigned values and reject unknown length`() {
+        val block = ByteArray(160)
+        repeat(48) { index -> hex("fe ff").copyInto(block, index * 2) }
+        repeat(16) { index -> hex("fe ff ff ff").copyInto(block, 96 + index * 4) }
+        hex("34 12").copyInto(block, 0)
+        hex("78 56").copyInto(block, 48)
+
+        val decoded = GgB100ProtocolPackets.decodeMissionLogExercise(block)
+
+        assertEquals(0x1234, decoded?.stepSlots?.first())
+        assertEquals(0x5678, decoded?.exerciseSlots?.first())
+        assertNull(GgB100ProtocolPackets.decodeMissionLogExercise(ByteArray(159)))
+    }
+
+    @Test
     fun `DRSP commands and headers match Mission Log captures`() {
         assertArrayEquals(hex("00 19 00 00 00"), GgB100ProtocolPackets.drspStart(0x19))
         assertArrayEquals(hex("04 11 00 00 00"), GgB100ProtocolPackets.drspEnd(0x11))

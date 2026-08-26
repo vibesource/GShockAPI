@@ -11,4 +11,8 @@ data class MissionLogData(
     /** Null only when the watch returns an as-yet unknown altitude block layout. */
     val altitude: MissionLogAltitudeData?
         get() = GgB100ProtocolPackets.decodeMissionLogAltitude(altitudeData)
+
+    /** Null only when the watch returns an unknown exercise block layout. */
+    val exercise: MissionLogExerciseData?
+        get() = GgB100ProtocolPackets.decodeMissionLogExercise(exerciseData)
 }
