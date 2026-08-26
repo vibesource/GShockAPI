@@ -102,6 +102,16 @@ class GgB100ProtocolTest {
     }
 
     @Test
+    fun `empty watch location record is preserved`() {
+        val emptyWorld = hex("24 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00")
+
+        assertArrayEquals(
+            emptyWorld,
+            GgB100ProtocolPackets.locationReadToWrite(emptyWorld, radioId = 4),
+        )
+    }
+
+    @Test
     fun `radio IDs follow Casio timezone reception table`() {
         assertEquals(1, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(-5 * 60))
         assertEquals(4, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(0))

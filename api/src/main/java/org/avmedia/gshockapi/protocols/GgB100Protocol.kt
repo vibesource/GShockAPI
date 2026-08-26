@@ -89,8 +89,16 @@ object GgB100ProtocolPackets {
             "invalid Module 5594 location record"
         }
         require(packet[1].toInt() and 0xFF in 0..1) { "invalid Module 5594 location slot" }
-        require(packet[2].toInt() and 0xFF == 0x01) { "location record has no position" }
+        val hasPosition = packet[2].toInt() and 0xFF
+        require(hasPosition in 0..1) { "invalid Module 5594 position flag" }
         require(radioId in 0..0xFF) { "radio ID must fit one byte" }
+
+        if (hasPosition == 0) {
+            require(packet.copyOfRange(3, packet.size).all { it == 0.toByte() }) {
+                "invalid empty Module 5594 location record"
+            }
+            return packet.copyOf()
+        }
 
         return packet.copyOf().apply {
             packet.copyOfRange(3, 11).reversedArray().copyInto(this, 3)
