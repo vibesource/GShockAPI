@@ -31,7 +31,7 @@ import org.avmedia.gshockapi.io.WorldCitiesIO
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
 import org.avmedia.gshockapi.model.MissionLogData
-import org.avmedia.gshockapi.model.LocationIndicatorFailure
+import org.avmedia.gshockapi.model.LocationIndicatorCommand
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
 import timber.log.Timber
@@ -387,21 +387,15 @@ import java.time.ZoneId
         return downloadMissionLog(location.latitude, location.longitude, timeZone)
     }
 
-    override suspend fun completeLocationIndicator(distanceMetres: Long, bearingDegrees: Int) {
-        LocationIndicatorIO.complete(distanceMetres, bearingDegrees)
-    }
+    override suspend fun requestLocationIndicatorCommand(): LocationIndicatorCommand =
+        LocationIndicatorIO.requestCommand()
 
-    override suspend fun failLocationIndicator(reason: LocationIndicatorFailure) {
-        LocationIndicatorIO.fail(reason)
-    }
-
-    override suspend fun updateLocationIndicator(distanceMetres: Long, bearingDegrees: Int) {
-        LocationIndicatorIO.update(distanceMetres, bearingDegrees)
-    }
-
-    override suspend fun updateLocationIndicatorFailure(reason: LocationIndicatorFailure) {
-        LocationIndicatorIO.updateFailure(reason)
-    }
+    override suspend fun respondLocationIndicator(
+        command: LocationIndicatorCommand,
+        resultCode: Int,
+        distanceMetres: Long,
+        bearingDegrees: Int,
+    ) = LocationIndicatorIO.respond(command, resultCode, distanceMetres, bearingDegrees)
 
     /**
      * Get Timer value in seconds.

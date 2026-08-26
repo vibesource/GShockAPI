@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.model.MissionLogAltitudeData
 import org.avmedia.gshockapi.model.MissionLogExerciseData
 import org.avmedia.gshockapi.io.LocationIndicatorIO
+import org.avmedia.gshockapi.model.LocationIndicatorCommand
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.time.DateTimeException
@@ -55,13 +56,36 @@ object GgB100ProtocolPackets {
         return byteArrayOf(LOCATION_INDICATOR.toByte(), 0x02, resultCode.toByte()) + ByteArray(6)
     }
 
+    fun locationIndicatorResponse(
+        command: LocationIndicatorCommand,
+        resultCode: Int,
+        distanceMetres: Long = 0,
+        bearingDegrees: Int = 0,
+    ): ByteArray {
+        require(resultCode in 0..3) { "Location Indicator result code must be between 0 and 3" }
+        require(distanceMetres in 0..0xFFFF_FFFFL) { "Distance must fit in an unsigned 32-bit integer" }
+        require(bearingDegrees in 0..359) { "Bearing must be between 0 and 359 degrees" }
+        return ByteBuffer.allocate(9).order(ByteOrder.LITTLE_ENDIAN)
+            .put(LOCATION_INDICATOR.toByte())
+            .put(command.code.toByte())
+            .put(resultCode.toByte())
+            .putInt(distanceMetres.toInt())
+            .putShort(bearingDegrees.toShort())
+            .array()
+    }
+
     fun locationIndicatorWatchName(): ByteArray =
         byteArrayOf(0x23) + "CASIO GG-B100".encodeToByteArray() + ByteArray(6)
 
     fun isLocationIndicatorCalculationRequest(packet: ByteArray): Boolean =
-        packet.size == 9 &&
-            packet[0].toInt() and 0xFF == LOCATION_INDICATOR &&
-            packet[1].toInt() and 0xFF == 0x02
+        locationIndicatorCommand(packet) == LocationIndicatorCommand.CALCULATE_DISTANCE_AND_BEARING
+
+    fun locationIndicatorCommand(packet: ByteArray): LocationIndicatorCommand? =
+        if (packet.size == 9 && packet[0].toInt() and 0xFF == LOCATION_INDICATOR) {
+            LocationIndicatorCommand.fromCode(packet[1].toInt() and 0xFF)
+        } else {
+            null
+        }
 
     fun altimeterCorrection(altitudeMetres: Int?): ByteArray {
         if (altitudeMetres == null) {

@@ -11,7 +11,7 @@ import org.avmedia.gshockapi.io.TimeAdjustmentInfo
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
 import org.avmedia.gshockapi.model.MissionLogData
-import org.avmedia.gshockapi.model.LocationIndicatorFailure
+import org.avmedia.gshockapi.model.LocationIndicatorCommand
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
 import java.util.TimeZone
@@ -181,13 +181,14 @@ interface IGShockAPI {
     @RequiresPermission(Manifest.permission.ACCESS_FINE_LOCATION)
     suspend fun downloadMissionLog(timeZone: String = TimeZone.getDefault().id): MissionLogData
 
-    suspend fun completeLocationIndicator(distanceMetres: Long, bearingDegrees: Int)
+    suspend fun requestLocationIndicatorCommand(): LocationIndicatorCommand
 
-    suspend fun failLocationIndicator(reason: LocationIndicatorFailure)
-
-    suspend fun updateLocationIndicator(distanceMetres: Long, bearingDegrees: Int)
-
-    suspend fun updateLocationIndicatorFailure(reason: LocationIndicatorFailure)
+    suspend fun respondLocationIndicator(
+        command: LocationIndicatorCommand,
+        resultCode: Int,
+        distanceMetres: Long = 0,
+        bearingDegrees: Int = 0,
+    )
 
     /**
      * Retrieves the current timer setting in seconds.

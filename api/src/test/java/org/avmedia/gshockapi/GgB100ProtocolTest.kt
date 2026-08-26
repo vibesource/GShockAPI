@@ -5,6 +5,7 @@ import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets
 import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets.MissionLogState.Command
 import org.avmedia.gshockapi.io.ButtonPressedIOFunctional
 import org.avmedia.gshockapi.io.IO
+import org.avmedia.gshockapi.model.LocationIndicatorCommand
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -47,6 +48,31 @@ class GgB100ProtocolTest {
         )
         assertTrue(
             GgB100ProtocolPackets.isLocationIndicatorCalculationRequest(
+                hex("35 02 00 00 00 00 00 00 00"),
+            ),
+        )
+        assertArrayEquals(
+            hex("35 00 00 00 00 00 00 00 00"),
+            GgB100ProtocolPackets.locationIndicatorResponse(
+                LocationIndicatorCommand.SAVE_CURRENT_LOCATION,
+                0,
+            ),
+        )
+        assertEquals(
+            LocationIndicatorCommand.SAVE_CURRENT_LOCATION,
+            GgB100ProtocolPackets.locationIndicatorCommand(
+                hex("35 00 00 00 00 00 00 00 00"),
+            ),
+        )
+        assertEquals(
+            LocationIndicatorCommand.DELETE_SAVED_LOCATION,
+            GgB100ProtocolPackets.locationIndicatorCommand(
+                hex("35 01 00 00 00 00 00 00 00"),
+            ),
+        )
+        assertEquals(
+            LocationIndicatorCommand.CALCULATE_DISTANCE_AND_BEARING,
+            GgB100ProtocolPackets.locationIndicatorCommand(
                 hex("35 02 00 00 00 00 00 00 00"),
             ),
         )
