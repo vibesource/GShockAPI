@@ -28,6 +28,7 @@ object ButtonPressedIOFunctional {
      *     2   = FIND_PHONE
      *     3   = NO_BUTTON (auto-time set, no physical button)
      *     4   = LOWER_RIGHT
+     *     8   = MISSION_LOG (Module 5594 watch-initiated transfer)
      *     0xA, 0xB, 0xD, 0xE = ALWAYS_CONNECTED_CONNECTION
      * 
      * Example data:
@@ -53,6 +54,7 @@ object ButtonPressedIOFunctional {
             2 -> IO.WatchButton.FIND_PHONE
             3 -> IO.WatchButton.NO_BUTTON // auto time set, no physical button pressed
             4 -> IO.WatchButton.LOWER_RIGHT
+            8 -> IO.WatchButton.MISSION_LOG
             else -> {
                 // For always-connected watches, check if 0b1000 bit is set
                 // Possible values: 0xA, 0xB, 0xD, 0xE all have bit 3 set

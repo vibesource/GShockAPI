@@ -3,6 +3,8 @@ package org.avmedia.gshockapi
 import org.avmedia.gshockapi.protocols.GgB100Protocol
 import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets
 import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets.MissionLogState.Command
+import org.avmedia.gshockapi.io.ButtonPressedIOFunctional
+import org.avmedia.gshockapi.io.IO
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -73,6 +75,46 @@ class GgB100ProtocolTest {
         assertArrayEquals(hex("36 00 01 57 00"), GgB100ProtocolPackets.altimeterCorrection(87))
         assertArrayEquals(hex("36 00 01 f4 ff"), GgB100ProtocolPackets.altimeterCorrection(-12))
         assertArrayEquals(hex("36 01 01 00 00"), GgB100ProtocolPackets.altimeterCorrection(null))
+    }
+
+    @Test
+    fun `phone location record matches official Module 5594 capture`() {
+        assertArrayEquals(
+            hex("24 00 01 40 4a 28 69 6a fd a4 dc bf f8 9f df 99 58 2b 3a 04"),
+            GgB100ProtocolPackets.locationAndRadioInformation(
+                slot = 0,
+                latitude = 52.3157171,
+                longitude = -1.5390316,
+                radioId = 4,
+            ),
+        )
+    }
+
+    @Test
+    fun `watch-read location converts to big endian write record`() {
+        assertArrayEquals(
+            hex("24 01 01 40 2d dc 65 40 cc 78 ea c0 37 83 3e 57 53 a3 ec 00"),
+            GgB100ProtocolPackets.locationReadToWrite(
+                hex("24 01 01 ea 78 cc 40 65 dc 2d 40 ec a3 53 57 3e 83 37 c0 00"),
+                radioId = 0,
+            ),
+        )
+    }
+
+    @Test
+    fun `radio IDs follow Casio timezone reception table`() {
+        assertEquals(1, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(-5 * 60))
+        assertEquals(4, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(0))
+        assertEquals(3, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(8 * 60))
+        assertEquals(2, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(9 * 60))
+        assertEquals(0, GgB100ProtocolPackets.radioIdForUtcOffsetMinutes(-60))
+    }
+
+    @Test
+    fun `connection reason 08 is routed as Mission Log`() {
+        val packet = "10 17 62 07 38 85 cd 7f 08 03 0f ff ff ff ff 24 00 00 00"
+
+        assertEquals(IO.WatchButton.MISSION_LOG, ButtonPressedIOFunctional.parseButtonPress(packet).getOrThrow())
     }
 
     private fun hex(value: String): ByteArray =

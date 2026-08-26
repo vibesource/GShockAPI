@@ -2,6 +2,8 @@ package org.avmedia.gshockapi.protocols
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.time.DateTimeException
 import java.time.LocalDateTime
 
@@ -51,6 +53,59 @@ object GgB100ProtocolPackets {
         }
         return byteArrayOf(CORRECT_SENSOR.toByte(), 0x00, 0x01) +
             littleEndian(altitudeMetres.toLong() and 0xFFFFL, 2)
+    }
+
+    /**
+     * Builds the Module 5594 Location & Radio Information register (0x24).
+     * Coordinates are IEEE-754 doubles in big-endian order on writes.
+     */
+    fun locationAndRadioInformation(
+        slot: Int,
+        latitude: Double,
+        longitude: Double,
+        radioId: Int,
+    ): ByteArray {
+        require(slot in 0..1) { "Module 5594 location slot must be 0 or 1" }
+        require(latitude.isFinite() && latitude in -90.0..90.0) { "invalid latitude" }
+        require(longitude.isFinite() && longitude in -180.0..180.0) { "invalid longitude" }
+        require(radioId in 0..0xFF) { "radio ID must fit one byte" }
+
+        return ByteBuffer.allocate(20).order(ByteOrder.BIG_ENDIAN)
+            .put(0x24)
+            .put(slot.toByte())
+            .put(0x01)
+            .putDouble(latitude)
+            .putDouble(longitude)
+            .put(radioId.toByte())
+            .array()
+    }
+
+    /**
+     * Converts a watch-read 0x24 record to its write representation and restores
+     * the radio ID, which is not retained in the read response.
+     */
+    fun locationReadToWrite(packet: ByteArray, radioId: Int): ByteArray {
+        require(packet.size == 20 && packet[0].toInt() and 0xFF == 0x24) {
+            "invalid Module 5594 location record"
+        }
+        require(packet[1].toInt() and 0xFF in 0..1) { "invalid Module 5594 location slot" }
+        require(packet[2].toInt() and 0xFF == 0x01) { "location record has no position" }
+        require(radioId in 0..0xFF) { "radio ID must fit one byte" }
+
+        return packet.copyOf().apply {
+            packet.copyOfRange(3, 11).reversedArray().copyInto(this, 3)
+            packet.copyOfRange(11, 19).reversedArray().copyInto(this, 11)
+            this[19] = radioId.toByte()
+        }
+    }
+
+    /** Mapping shipped in CASIO WATCHES' dst_auto_rep_enable table. */
+    fun radioIdForUtcOffsetMinutes(offsetMinutes: Int): Int = when (offsetMinutes) {
+        -8 * 60, -7 * 60, -6 * 60, -5 * 60, -4 * 60 -> 1
+        9 * 60 -> 2
+        8 * 60 -> 3
+        0, 1 * 60, 2 * 60 -> 4
+        else -> 0
     }
 
     fun parseMissionLogState(packet: ByteArray): MissionLogState? {

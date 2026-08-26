@@ -12,10 +12,12 @@ import org.avmedia.gshockapi.io.IO
 import org.avmedia.gshockapi.io.TimeAdjustmentInfo
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
+import org.avmedia.gshockapi.model.MissionLogData
 import org.avmedia.gshockapi.model.EventDate
 import org.avmedia.gshockapi.model.RepeatPeriod
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
+import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets
 import timber.log.Timber
 import java.time.DayOfWeek
 import java.time.Month
@@ -80,6 +82,8 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
         return false
     }
 
+    override fun isMissionLogConnection(): Boolean = false
+
     override fun isAlwaysConnectedConnectionPressed(): Boolean {
         return false
     }
@@ -141,6 +145,23 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
     override suspend fun getStepCount(): StepCounterData {
         return StepCounterData.unavailable()
     }
+
+    override suspend fun downloadMissionLog(
+        latitude: Double,
+        longitude: Double,
+        timeZone: String,
+    ): MissionLogData = unavailableMissionLog()
+
+    override suspend fun downloadMissionLog(timeZone: String): MissionLogData = unavailableMissionLog()
+
+    private fun unavailableMissionLog(): MissionLogData = MissionLogData(
+        state = GgB100ProtocolPackets.MissionLogState(
+            GgB100ProtocolPackets.MissionLogState.Command.NO_FUNCTION,
+            null,
+        ),
+        altitudeData = ByteArray(0),
+        exerciseData = ByteArray(0),
+    )
 
     override suspend fun getTimer(): Int {
         return 4 * 60

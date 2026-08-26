@@ -17,6 +17,7 @@ import org.avmedia.gshockapi.ble.IDataReceived
 import org.avmedia.gshockapi.casio.CasioConstants
 import org.avmedia.gshockapi.casio.MessageDispatcher
 import org.avmedia.gshockapi.io.ConvoyTransferIO
+import org.avmedia.gshockapi.io.FeatureRequestIO
 import java.util.UUID
 
 /*
@@ -44,10 +45,12 @@ object WatchDataListener {
                             ConvoyTransferIO.onDrspReceived(data)
                         CasioConstants.CASIO_CONVOY_CHARACTERISTIC_UUID ->
                             ConvoyTransferIO.onConvoyReceived(data)
+                        CasioConstants.CASIO_ALL_FEATURES_CHARACTERISTIC_UUID ->
+                            if (!FeatureRequestIO.onReceived(data)) {
+                                dataReceived(data.toHexNotification())
+                            }
                         else -> dataReceived(
-                            data.joinToString(separator = " ", prefix = "0x") {
-                                String.format("%02X", it)
-                            },
+                            data.toHexNotification(),
                         )
                     }
                 }
@@ -63,9 +66,13 @@ object WatchDataListener {
             },
             EventAction("Disconnect") {
                 ConvoyTransferIO.cancel("watch disconnected during convoy transfer")
+                FeatureRequestIO.cancel("watch disconnected during feature request")
             },
         )
 
         ProgressEvents.subscriber.runEventActions(this.javaClass.name, eventActions)
     }
+
+    private fun ByteArray.toHexNotification(): String =
+        joinToString(separator = " ", prefix = "0x") { String.format("%02X", it) }
 }

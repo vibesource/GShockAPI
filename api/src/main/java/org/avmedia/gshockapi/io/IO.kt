@@ -50,7 +50,8 @@ object IO {
     private var state = State()
 
     enum class WatchButton {
-        UPPER_LEFT, LOWER_LEFT, UPPER_RIGHT, LOWER_RIGHT, NO_BUTTON, FIND_PHONE, ALLAYS_CONNECTED_CONNECTION, INVALID
+        UPPER_LEFT, LOWER_LEFT, UPPER_RIGHT, LOWER_RIGHT, NO_BUTTON, FIND_PHONE,
+        MISSION_LOG, ALLAYS_CONNECTED_CONNECTION, INVALID
     }
 
     enum class DstState(val state: Int) {

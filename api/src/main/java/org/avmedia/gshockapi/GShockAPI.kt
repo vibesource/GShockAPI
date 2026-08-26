@@ -1,5 +1,6 @@
 package org.avmedia.gshockapi
 
+import android.Manifest
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.os.Build
@@ -18,6 +19,8 @@ import org.avmedia.gshockapi.io.ErrorIO
 import org.avmedia.gshockapi.io.EventsIO
 import org.avmedia.gshockapi.io.IO
 import org.avmedia.gshockapi.io.IO.writeCmd
+import org.avmedia.gshockapi.io.MissionLogIO
+import org.avmedia.gshockapi.io.PhoneLocationProvider
 import org.avmedia.gshockapi.io.StepCounterIO
 import org.avmedia.gshockapi.io.TimeAdjustmentInfo
 import org.avmedia.gshockapi.io.TimeIO
@@ -26,6 +29,7 @@ import org.avmedia.gshockapi.io.WatchNameIO
 import org.avmedia.gshockapi.io.WorldCitiesIO
 import org.avmedia.gshockapi.model.Alarm
 import org.avmedia.gshockapi.model.Event
+import org.avmedia.gshockapi.model.MissionLogData
 import org.avmedia.gshockapi.model.Settings
 import org.avmedia.gshockapi.model.StepCounterData
 import timber.log.Timber
@@ -261,6 +265,9 @@ import java.time.ZoneId
         return button == IO.WatchButton.FIND_PHONE
     }
 
+    override fun isMissionLogConnection(): Boolean =
+        ButtonPressedIO.get() == IO.WatchButton.MISSION_LOG
+
     /**
      * Get the name of the watch.
      *
@@ -346,6 +353,22 @@ import java.time.ZoneId
      */
     override suspend fun getStepCount(): StepCounterData {
         return StepCounterIO.request()
+    }
+
+    override suspend fun downloadMissionLog(
+        latitude: Double,
+        longitude: Double,
+        timeZone: String,
+    ): MissionLogData {
+        require(ZoneId.getAvailableZoneIds().contains(timeZone)) { "Invalid timezone $timeZone" }
+        return MissionLogIO.download(latitude, longitude, timeZone)
+    }
+
+    @RequiresPermission(Manifest.permission.ACCESS_FINE_LOCATION)
+    override suspend fun downloadMissionLog(timeZone: String): MissionLogData {
+        val location = PhoneLocationProvider.currentLocation(context)
+            ?: error("Unable to obtain phone location for Mission Log")
+        return downloadMissionLog(location.latitude, location.longitude, timeZone)
     }
 
     /**
