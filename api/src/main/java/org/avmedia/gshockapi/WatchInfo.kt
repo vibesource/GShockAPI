@@ -236,9 +236,7 @@ data object WatchInfo {
         ),
         ModelInfo(
             model = WatchModel.GG_B100,
-            // Module 5594 has a distinct 160-byte exercise record. Keep the
-            // existing ABL-100 step decoder disabled until that layout is decoded.
-            hasStepCounter = false,
+            hasStepCounter = true,
             hasLocationIndicator = true,
             hasMissionLog = true,
             hasAltimeterCorrection = true,

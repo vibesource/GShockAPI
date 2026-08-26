@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.model.StepCounterData
 import org.avmedia.gshockapi.WatchInfo
+import org.avmedia.gshockapi.protocols.GgB100ProtocolPackets
 import timber.log.Timber
 
 // ============================================================================
@@ -125,7 +126,11 @@ object StepCounterIO {
     private suspend fun getStepCount(): StepCounterData {
         return runCatching {
             val payload = ConvoyTransferIO.request(DRSP_CATEGORY_EXERCISE)
-            StepCounterIOFunctional.parse(payload)
+            when (WatchInfo.model) {
+                WatchInfo.WatchModel.GG_B100 ->
+                    GgB100ProtocolPackets.decodeMissionLogExercise(payload)?.toStepCounterData()
+                else -> StepCounterIOFunctional.parse(payload)
+            }
                 ?: error("failed to parse ${payload.size}B activity record")
         }.onSuccess { stepData ->
             Timber.i("Step count parsed: $stepData")

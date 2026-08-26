@@ -7,7 +7,6 @@ import org.avmedia.gshockapi.io.ButtonPressedIOFunctional
 import org.avmedia.gshockapi.io.IO
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
@@ -25,7 +24,7 @@ class GgB100ProtocolTest {
         assertTrue(info.hasLocationIndicator)
         assertTrue(info.hasMissionLog)
         assertTrue(info.hasAltimeterCorrection)
-        assertFalse(info.hasStepCounter)
+        assertTrue(info.hasStepCounter)
     }
 
     @Test
@@ -99,6 +98,11 @@ class GgB100ProtocolTest {
         assertEquals(720L, decoded?.currentDay?.exercise)
         assertNull(decoded?.dailyTotals?.get(1)?.steps)
         assertNull(decoded?.dailyTotals?.get(7)?.exercise)
+
+        val shared = decoded?.toStepCounterData(LocalDateTime.of(2026, 8, 26, 0, 0).toLocalDate())
+        assertEquals(1862, shared?.currentDaySteps)
+        assertEquals(listOf(199, 307, 459, 163), shared?.hourlySteps?.filterNotNull())
+        assertEquals(7, shared?.dailyHistory?.size)
     }
 
     @Test

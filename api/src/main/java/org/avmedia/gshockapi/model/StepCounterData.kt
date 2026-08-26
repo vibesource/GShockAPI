@@ -1,11 +1,10 @@
 package org.avmedia.gshockapi.model
 
 /**
- * ABL-100WE life-log record.
+ * Shared step-counter view used by supported watch-specific record decoders.
  *
- * `hourlySteps` contains the 144 two-byte history slots (six 24-hour blocks),
- * while `dailyHistory` contains the 14 four-byte day slots. `null` represents
- * the watch's unavailable sentinel rather than a genuine zero-step period.
+ * Slot and history lengths vary by model. `null` represents the watch's
+ * unavailable sentinel rather than a genuine zero-step period.
  */
 data class StepCounterData(
     val dayOfWeek: Int,

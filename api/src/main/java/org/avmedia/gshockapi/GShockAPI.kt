@@ -104,6 +104,17 @@ import java.time.ZoneId
         getAppInfo()
 
         getPressedButton()
+        val button = ButtonPressedIO.get()
+        if (
+            WatchInfo.model == WatchInfo.WatchModel.GG_B100 &&
+            button in setOf(IO.WatchButton.LOWER_RIGHT, IO.WatchButton.NO_BUTTON)
+        ) {
+            StepCounterIO.request().also { steps ->
+                if (steps.currentDaySteps != null) {
+                    ProgressEvents.onNext("StepCounterDataReceived", steps)
+                }
+            }
+        }
         ProgressEvents.onNext("ButtonPressedInfoReceived")
         ProgressEvents.onNext("WatchInitializationCompleted")
         return true

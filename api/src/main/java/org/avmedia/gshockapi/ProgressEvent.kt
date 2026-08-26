@@ -69,6 +69,7 @@ object ProgressEvents {
         "WatchInitializationCompleted",
         "AllPermissionsAccepted",
         "ButtonPressedInfoReceived",
+        "StepCounterDataReceived",
         "ConnectionFailed",
         "SettingsLoaded",
         "NeedToUpdateUI",
