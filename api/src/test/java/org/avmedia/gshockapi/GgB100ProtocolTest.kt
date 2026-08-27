@@ -118,14 +118,28 @@ class GgB100ProtocolTest {
 
         val decoded = GgB100ProtocolPackets.decodeMissionLogAltitude(block)
 
-        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 44, 4), decoded?.startTimeUtc)
+        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 44, 0), decoded?.startTimeUtc)
         assertEquals(2, decoded?.samples?.size)
         assertEquals(84, decoded?.samples?.get(0)?.altitudeMetres)
-        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 46, 4), decoded?.samples?.get(1)?.timestampUtc)
+        assertEquals(LocalDateTime.of(2026, 8, 25, 15, 46, 0), decoded?.samples?.get(1)?.timestampUtc)
         assertEquals(2, decoded?.endMarkerIndex)
         assertEquals(81, decoded?.points?.single()?.altitudeMetres)
         assertEquals(LocalDateTime.of(2026, 8, 25, 15, 0, 55), decoded?.points?.single()?.timestampUtc)
         assertEquals("5b 04 00 ff", decoded?.points?.single()?.metadataHex)
+    }
+
+    @Test
+    fun `altitude record count is not decoded as BCD seconds`() {
+        val block = ByteArray(294) { 0xFF.toByte() }
+        hex("26 08 27 08 02 0f").copyInto(block, 0)
+        repeat(60) { index -> hex("ff 7f").copyInto(block, 6 + index * 2) }
+        repeat(15) { index -> hex("5b 00").copyInto(block, 6 + index * 2) }
+
+        val decoded = GgB100ProtocolPackets.decodeMissionLogAltitude(block)
+
+        assertEquals(LocalDateTime.of(2026, 8, 27, 8, 2, 0), decoded?.startTimeUtc)
+        assertEquals(15, decoded?.samples?.size)
+        assertEquals(LocalDateTime.of(2026, 8, 27, 8, 30, 0), decoded?.samples?.last()?.timestampUtc)
     }
 
     @Test

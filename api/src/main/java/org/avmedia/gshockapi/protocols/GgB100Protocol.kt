@@ -185,7 +185,10 @@ object GgB100ProtocolPackets {
     fun decodeMissionLogAltitude(data: ByteArray): MissionLogAltitudeData? {
         if (data.size != 294) return null
 
-        val startTime = decodeBcdTimestamp(data.copyOfRange(0, 6))
+        // The altitude header stores YY MM DD HH mm followed by a record-count byte.
+        // It does not contain seconds. Counts above nine exposed the earlier mistaken
+        // interpretation of byte 5 as BCD seconds.
+        val startTime = decodeBcdMinute(data.copyOfRange(0, 5))
         val samples = mutableListOf<MissionLogAltitudeData.Sample>()
         var endMarkerIndex: Int? = null
         repeat(60) { index ->
@@ -302,4 +305,7 @@ object GgB100ProtocolPackets {
             null
         }
     }
+
+    private fun decodeBcdMinute(bytes: ByteArray): LocalDateTime? =
+        if (bytes.size == 5) decodeBcdTimestamp(bytes + byteArrayOf(0x00)) else null
 }
