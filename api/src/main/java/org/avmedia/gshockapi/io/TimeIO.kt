@@ -187,8 +187,15 @@ object TimeIO {
      */
     fun getCasioTimezone(): CasioTimeZoneHelper.CasioTimeZone = state.casioTimezone
 
-    suspend fun set(timeMs: Long? = null, offset: Long? = null) {
+    suspend fun set(
+        timeMs: Long? = null,
+        offset: Long? = null,
+        beforeCurrentTime: (() -> Unit)? = null,
+    ) {
         initializeForSettingTime()
+        // Some watches require additional scheduled-sync writes before current time. Current
+        // time is the terminal packet: the watch may disconnect immediately after receiving it.
+        beforeCurrentTime?.invoke()
         val timeToSet = timeMs ?: (Clock.systemDefaultZone().millis() + (offset ?: 0L))
 
         Connection.sendMessage(

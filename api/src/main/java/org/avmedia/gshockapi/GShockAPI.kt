@@ -401,6 +401,27 @@ import java.time.ZoneId
     override suspend fun correctAltimeter(altitudeMetres: Int?): Boolean =
         AltimeterCorrectionIO.correct(altitudeMetres)
 
+    override suspend fun setTimeWithAltimeterCorrection(
+        altitudeMetres: Int?,
+        timeZone: String,
+        timeMs: Long?,
+        offsetFormSystemTime: Long?,
+    ) {
+        require(WatchInfo.hasAltimeterCorrection) {
+            "Altimeter correction is not supported by this watch"
+        }
+        if (!ZoneId.getAvailableZoneIds().contains(timeZone)) {
+            Timber.e("setTimeWithAltimeterCorrection: Invalid timezone $timeZone passed")
+            ProgressEvents.onNext("ApiError")
+            return
+        }
+
+        TimeIO.setTimezone(timeZone)
+        TimeIO.set(timeMs, offsetFormSystemTime) {
+            AltimeterCorrectionIO.correct(altitudeMetres)
+        }
+    }
+
     /**
      * Get Timer value in seconds.
      *

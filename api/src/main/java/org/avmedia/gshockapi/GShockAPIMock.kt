@@ -169,6 +169,15 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
 
     override suspend fun correctAltimeter(altitudeMetres: Int?): Boolean = true
 
+    override suspend fun setTimeWithAltimeterCorrection(
+        altitudeMetres: Int?,
+        timeZone: String,
+        timeMs: Long?,
+        offsetFormSystemTime: Long?,
+    ) {
+        Timber.i("Time set to $timeZone with altimeter correction $altitudeMetres")
+    }
+
     private fun unavailableMissionLog(): MissionLogData = MissionLogData(
         state = GgB100ProtocolPackets.MissionLogState(
             GgB100ProtocolPackets.MissionLogState.Command.NO_FUNCTION,

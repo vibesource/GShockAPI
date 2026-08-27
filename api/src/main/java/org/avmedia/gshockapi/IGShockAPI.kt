@@ -190,8 +190,19 @@ interface IGShockAPI {
         bearingDegrees: Int = 0,
     )
 
-    /** Corrects the GG-B100 altimeter, or reports unavailable altitude with null. */
+    /** Queues a GG-B100 altimeter correction, or reports unavailable altitude with null. */
     suspend fun correctAltimeter(altitudeMetres: Int?): Boolean
+
+    /**
+     * Performs scheduled GG-B100 correction immediately before the terminal current-time write.
+     * The ordering matters because the watch disconnects after accepting current time.
+     */
+    suspend fun setTimeWithAltimeterCorrection(
+        altitudeMetres: Int?,
+        timeZone: String = TimeZone.getDefault().id,
+        timeMs: Long? = null,
+        offsetFormSystemTime: Long? = null,
+    )
 
     /**
      * Retrieves the current timer setting in seconds.

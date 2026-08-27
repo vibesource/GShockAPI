@@ -5,7 +5,6 @@ import androidx.annotation.RequiresApi
 import org.avmedia.gshockapi.model.MissionLogAltitudeData
 import org.avmedia.gshockapi.model.MissionLogExerciseData
 import org.avmedia.gshockapi.io.LocationIndicatorIO
-import org.avmedia.gshockapi.io.AltimeterCorrectionIO
 import org.avmedia.gshockapi.model.LocationIndicatorCommand
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -18,7 +17,6 @@ open class GgB100Protocol : StandardProtocol() {
     override val dataReceivedHandlers: Map<Int, (String) -> Unit>
         get() = super.dataReceivedHandlers + mapOf(
             GgB100ProtocolPackets.LOCATION_INDICATOR to LocationIndicatorIO::onReceived,
-            GgB100ProtocolPackets.CORRECT_SENSOR to AltimeterCorrectionIO::onReceived,
         )
 
     companion object : GgB100Protocol()
