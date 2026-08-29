@@ -12,6 +12,7 @@ import androidx.appcompat.app.AppCompatActivity
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 import org.avmedia.gshockapi.DeviceInfo
 import org.avmedia.gshockapi.ProgressEvents
 import org.avmedia.gshockapi.WatchInfo
@@ -80,6 +81,12 @@ object Connection {
     fun write(handle: GetSetMode, data: ByteArray) {
         scope.launch {
             bleManager.write(handle, data)
+        }
+    }
+
+    suspend fun writeAndWait(handle: GetSetMode, data: ByteArray) {
+        withTimeout(5_000) {
+            bleManager.writeAndWait(handle, data)
         }
     }
 

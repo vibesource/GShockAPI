@@ -174,8 +174,9 @@ class GShockAPIMock(private val context: Context) : IGShockAPI {
         timeZone: String,
         timeMs: Long?,
         offsetFormSystemTime: Long?,
-    ) {
+    ): Boolean {
         Timber.i("Time set to $timeZone with altimeter correction $altitudeMetres")
+        return true
     }
 
     private fun unavailableMissionLog(): MissionLogData = MissionLogData(

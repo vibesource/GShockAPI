@@ -190,7 +190,7 @@ interface IGShockAPI {
         bearingDegrees: Int = 0,
     )
 
-    /** Queues a GG-B100 altimeter correction, or reports unavailable altitude with null. */
+    /** Writes a GG-B100 altimeter correction, or reports unavailable altitude with null. */
     suspend fun correctAltimeter(altitudeMetres: Int?): Boolean
 
     /**
@@ -202,7 +202,7 @@ interface IGShockAPI {
         timeZone: String = TimeZone.getDefault().id,
         timeMs: Long? = null,
         offsetFormSystemTime: Long? = null,
-    )
+    ): Boolean
 
     /**
      * Retrieves the current timer setting in seconds.

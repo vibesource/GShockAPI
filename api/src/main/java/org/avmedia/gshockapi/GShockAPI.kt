@@ -406,20 +406,20 @@ import java.time.ZoneId
         timeZone: String,
         timeMs: Long?,
         offsetFormSystemTime: Long?,
-    ) {
+    ): Boolean {
         require(WatchInfo.hasAltimeterCorrection) {
             "Altimeter correction is not supported by this watch"
         }
         if (!ZoneId.getAvailableZoneIds().contains(timeZone)) {
             Timber.e("setTimeWithAltimeterCorrection: Invalid timezone $timeZone passed")
             ProgressEvents.onNext("ApiError")
-            return
+            return false
         }
 
         TimeIO.setTimezone(timeZone)
-        TimeIO.set(timeMs, offsetFormSystemTime) {
+        return TimeIO.set(timeMs, offsetFormSystemTime) {
             AltimeterCorrectionIO.correct(altitudeMetres)
-        }
+        } ?: false
     }
 
     /**

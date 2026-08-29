@@ -9,12 +9,15 @@ import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.suspendCancellableCoroutine
 import no.nordicsemi.android.ble.BleManager
 import no.nordicsemi.android.ble.observer.ConnectionObserver
 import org.avmedia.gshockapi.ProgressEvents
 import org.avmedia.gshockapi.casio.CasioConstants
 import timber.log.Timber
 import java.util.UUID
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 enum class ConnectionState {
     CONNECTING, CONNECTED, DISCONNECTED, DISCONNECTING
@@ -39,6 +42,7 @@ interface GShock {
     fun enableNotifications()
     var connectionState: ConnectionState
     suspend fun write(handle: GetSetMode, data: ByteArray)
+    suspend fun writeAndWait(handle: GetSetMode, data: ByteArray)
     fun isServiceSupported(handle: GetSetMode): Boolean
 }
 
@@ -385,15 +389,55 @@ private class GShockManagerImpl(
     }
 
     override suspend fun write(handle: GetSetMode, data: ByteArray) {
+        val (characteristic, writeType) = resolveWrite(handle) ?: return
+
+        try {
+            writeCharacteristic(characteristic, data, writeType).enqueue()
+        } catch (e: Exception) {
+            Timber.e(e, "Error writing to characteristic ${characteristic.uuid}")
+            ProgressEvents.onNext("ApiError", "Failed to write data: ${e.message}")
+            disconnect()
+        }
+    }
+
+    override suspend fun writeAndWait(handle: GetSetMode, data: ByteArray) {
+        val (characteristic, writeType) = resolveWrite(handle)
+            ?: error("Unable to resolve ${handle.name.lowercase()} characteristic")
+
+        suspendCancellableCoroutine { continuation ->
+            try {
+                writeCharacteristic(characteristic, data, writeType)
+                    .done {
+                        if (continuation.isActive) continuation.resume(Unit)
+                    }
+                    .fail { _, status ->
+                        if (continuation.isActive) {
+                            continuation.resumeWithException(
+                                IllegalStateException(
+                                    "GATT write to ${characteristic.uuid} failed with status $status",
+                                ),
+                            )
+                        }
+                    }
+                    .enqueue()
+            } catch (error: Exception) {
+                if (continuation.isActive) continuation.resumeWithException(error)
+            }
+        }
+    }
+
+    private fun resolveWrite(
+        handle: GetSetMode,
+    ): Pair<BluetoothGattCharacteristic, Int>? {
         if (characteristicUUIDs.isEmpty()) {
             ProgressEvents.onNext("ApiError", "Not connected to watch")
             disconnect()
-            return
+            return null
         }
 
         if (!isServiceSupported(handle)) {
             Timber.e("${handle.name.lowercase()} feature not supported")
-            return
+            return null
         }
 
         val characteristic = when (handle) {
@@ -410,12 +454,6 @@ private class GShockManagerImpl(
                 BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE
             else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
 
-        try {
-            writeCharacteristic(characteristic, data, writeType).enqueue()
-        } catch (e: Exception) {
-            Timber.e(e, "Error writing to characteristic ${characteristic?.uuid}")
-            ProgressEvents.onNext("ApiError", "Failed to write data: ${e.message}")
-            disconnect()
-        }
+        return characteristic?.let { it to writeType }
     }
 }

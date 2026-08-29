@@ -70,6 +70,10 @@ object IO {
         Connection.write(handle, bytesArray)
     }
 
+    suspend fun writeCmdAndWait(handle: GetSetMode, bytesArray: ByteArray) {
+        Connection.writeAndWait(handle, bytesArray)
+    }
+
     fun writeCmd(handle: GetSetMode, cmd: String) {
         writeCmdFromString(handle, cmd)
     }
